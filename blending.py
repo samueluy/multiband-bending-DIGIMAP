@@ -35,17 +35,9 @@ class MultiBandBlending(Blending):
         # SCORE +2: Generate a Gaussian Pyramid using the input 'image' of shape (H, W)
         # Hint: use cv2.pyrDown
         # Hint: The pyramid goes smaller the higher the index (pyramid[0] is bigger than pyramid[1], large->small)
-
-        # pyramid = []
-        # for i in range(self.num_levels - 1):
-        #     continue  # Hint: Replace this line with the appropriate expression
-        
         pyramid = [image]
-        for i in range(1, self.num_levels):
-            prev_level = pyramid[i-1]
-            current_level = cv2.pyrDown(prev_level)
-            pyramid.append(current_level)
-
+        for i in range(self.num_levels - 1):
+            pyramid.append(cv2.pyrDown(pyramid[i]))
         return pyramid
 
     def laplacian_pyramid(self, image: np.ndarray) -> typing.List[np.ndarray]:
@@ -56,16 +48,11 @@ class MultiBandBlending(Blending):
         pyramid = []
         current = image.copy()
         for i in range(self.num_levels - 1):
-            # Downsample the current image to obtain the low-frequency features
             lowfreq_features = cv2.pyrDown(current)
-            # Upsample the low-frequency features and subtract from the current image to obtain the high-frequency features
             lowfreq_features_upsampled = cv2.pyrUp(lowfreq_features)
             highfreq_features = current - lowfreq_features_upsampled
-            # Append the high-frequency features to the pyramid
             pyramid.append(highfreq_features)
-            # Set the current image to the low-frequency features for the next iteration
             current = lowfreq_features
-        # Append the last low-frequency image to the pyramid
         pyramid.append(current)
         return pyramid
 
@@ -74,7 +61,7 @@ class MultiBandBlending(Blending):
         # Hint: See the class NaiveBlending (above)
         composites = []
         for target, source, mask in zip(target_pyramid, source_pyramid, mask_pyramid):
-            composite = NaiveBlending()(target, source, mask)
+            composite = target * (1 - mask) + source * mask
             composites.append(composite)
         return composites
 
@@ -91,12 +78,12 @@ class MultiBandBlending(Blending):
     def split_channels(self, image: np.ndarray) -> typing.List[np.ndarray]:
         # SCORE +1: Split an image into multiple channels
         # Hint: (H, W, C) -> [(H, W), (H, W), ..., (H, W)]
-        return [image[:, :, 0], image[:, :, 1]]  # Hint: Replace this line with the appropriate expression
+        return [image[:, :, i] for i in range(image.shape[2])]  # Hint: Replace this line with the appropriate expression
 
     def join_channels(self, channels: typing.List[np.ndarray]) -> np.ndarray:
         # SCORE +1: Combine the split channels to a single image of shape (H, W, C)
         # Hint: Use np.stack
-        return np.stack(channels, axis=-1)
+        return np.stack(channels, axis=2)
 
     def blend_channel(self, target: np.ndarray, source: np.ndarray, mask: np.ndarray):
         assert target.ndim == 2
